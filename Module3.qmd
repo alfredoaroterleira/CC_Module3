@@ -1,0 +1,355 @@
+---
+title: "CC_Module3"
+author: "Alfredo Aro Terleira"
+format: 
+  html: 
+    self-contained: true
+editor: visual
+---
+
+## Word Clouds
+
+Word Cloud is an image composed of words that occur in a particular text or subject. The size of a word indicates its frequency or its importance.
+
+To create a word cloud, we will need a text file.
+
+### Paso 1: Descargamos el archivo
+
+-   Es importante escribir de forma correcta la ruta donde queremos descargar el archivo
+
+-   Debemos instalar dos librerías importantes: `tm` y `wordcloud`
+
+-   `tm`: stand for text mining, this package will transform the text into a format that's handled by R
+
+-   `wordcloud`: with this package will create the visualization
+
+```{r}
+library(tm)
+library(wordcloud)
+
+dir.create("C:/Users/USUARIO/Documents/GitHub/CC_Module3/wordcloud")
+download.file("https://ibm.box.com/shared/static/cmid70rpa7xe4ocitcga1bve7r0kqnia.txt",
+              destfile = "C:/Users/USUARIO/Documents/GitHub/CC_Module3/wordcloud/churchill_speeches.txt", quiet = TRUE)
+```
+
+### Paso 2: Directorio
+
+-   Es importante seleccionar el directorio, pero siempre lo hacemos desde Session -\> Set Working Directory -\> Choose Directory
+
+```{r}
+#Seleccionamos el directorio de forma manual
+dirPath <- "C:/Users/USUARIO/Documents/GitHub/CC_Module3/wordcloud"
+
+#Lo cargamos
+speech <- Corpus(DirSource(dirPath))
+```
+
+-   Chequeamos la estructura de nuestro text Corpus
+
+```{r}
+inspect(speech)
+```
+
+### Paso 3: Data Cleaning
+
+1.  Convert the text to lower case
+
+```{r}
+speech <- tm_map(speech, content_transformer(tolower))
+```
+
+2.  Remove all numbers with the `'removeNumbers'`
+
+```{r}
+speech <- tm_map(speech,removeNumbers)
+```
+
+3.  Remove common stop words like 'the' and 'we'
+
+```{r}
+speech <- tm_map(speech, removeWords, stopwords("english"))
+```
+
+4.  You can even remove your own stop words by specifying the words in a character vector
+
+```{r}
+speech <- tm_map(speech, removeWords, c("floccinaucinihilipification", "squirrelled"))
+```
+
+5.  Remove punctuation with the `'removePunctuation'`
+
+```{r}
+speech <- tm_map(speech, removePunctuation)
+```
+
+6.  Remove unnecessary whitespace with `'stripwhitespace'`
+
+```{r}
+speech <- tm_map(speech, stripWhitespace)
+```
+
+### Paso 4: Term Document Matrix
+
+Next step is to create a term document matrix, which is a **table that contains the frequency of the words.** We will use `'TermDocumentMatrix'`
+
+```{r}
+#Create a Term Document Matrix
+dtm <- TermDocumentMatrix(speech)
+
+#Matrix transformation
+m <- as.matrix(dtm)
+
+#Sort it to show the most frequent words
+v <- sort(rowSums(m), decreasing=TRUE)
+
+#transform to a data frame
+d <- data.frame(word = names(v), freq=v)
+head(d,10)
+```
+
+### Paso 5: Simple Word Cloud
+
+```{r}
+wordcloud(words = d$word, freq = d$freq)
+```
+
+### Paso 6: Frequency
+
+You can also **adjust the number of words by specifying the minimum frequency**
+
+```{r}
+wordcloud(words = d$word, freq = d$freq,
+          min.freq=1)
+```
+
+### Paso 7: Max Words
+
+You can impose a **limit on the number of words that can be displayed**
+
+```{r}
+wordcloud(words = d$word, freq = d$freq,
+          min.freq = 1, max.words=250)
+```
+
+### Paso 8: Colors
+
+```{r}
+#install.packages("RColorBrewer")
+library(RColorBrewer)
+library(wordcloud)
+
+wordcloud(words = d$word, freq = d$freq, min.freq = 1, max.words = 250, colors = brewer.pal(8, "Dark2"))
+```
+
+### Paso 9: Centered Word Cloud
+
+```{r}
+wordcloud(words = d$word, freq = d$freq, min.freq = 1, max.words=250, colors = brewer.pal(8, "Dark2"), random.order = FALSE)
+```
+
+## Radar Charts
+
+-   Radar charts are a way to display multivariate data within one plot
+
+### Paso 1: Instalación de librerias
+
+**Importante:** El paquete `ggradar` se torna algo complicado de instalar, pero resulta más fácil si se realiza a través de github de la siguiente forma:
+
+```{r}
+#devtools::install_github("ricardo-bion/ggradar", dependencies = TRUE)
+```
+
+```{r}
+library(ggplot2)
+library(ggradar)
+library(dplyr)
+library(scales)
+library(tibble)
+```
+
+### Paso 2: Nuestra base de datos
+
+```{r}
+mtcars
+```
+
+### Paso 3: Radar Chart
+
+```{r}
+#Select our dataset
+mtcars %>%
+  #atribute rownames to a variable
+  add_rownames( var = "group") %>%
+  #assign each varaible -- car names -- to their related variables
+  mutate(across(where(is.numeric), rescale)) %>%
+  #select which data to plot
+  head(3) %>% select(1:10) -> mtcars_radar
+```
+
+```{r}
+#this code will generate lots of warning, so let's supress them
+options(warn=-1)
+ggradar(mtcars_radar)
+```
+
+### Paso 4: Output
+
+Si queremos mejorar la visualización, pero se ve igual. Así que no pasa nada.
+
+```{r}
+#Debos instalar lo siguiente
+
+#devtools::install_github("IRkernel/IRkernel")
+
+
+#IRkernel::set_plot_options(width=950, height=600, units='px')
+#ggradar(mtcars_radar)
+```
+
+## Waffle Charts
+
+Waffle charts are a great way to visualize data in relation to a whole or to highlight progress against a given threshold.
+
+### Paso 1: Libraries
+
+```{r}
+library(ggplot2)
+library(waffle)
+```
+
+### Paso 2: Implementation in R
+
+1.  Firs, we need to create a name vector with the household spending data from before
+
+```{r}
+expenses <- c('Health ($43,212)' = 43212,
+              'Education ($113,412)' = 113412,
+              'Transportation ($20,231)' = 20231,
+              'Entertainment ($28,145)' = 28145)
+```
+
+2.  To create our waffle chart, we will use the `'waffle'` method
+
+-   expenses/1235: se utiliza como factor de normalización. Se busca reducir las cifras de gasto en una escala adecuada para que el gráfico de waffle tenga un número de cuadrados visualmente representativo, sin que sea demasiado grande o pequeño.
+
+```{r}
+waffle(expenses/1235, rows=5, size=0.3,
+       colors=c("#c7d4b6", "#a3aabd", "#a0d0de", "#97b5cf"),
+       title="Imaginary Household Expenses Each Year",
+       xlab = "1 square = $934")
+```
+
+### Paso 3: Mejora
+
+Esto era si queriamos mejorar la visualización, pero luce igual, así que no hay problema.
+
+```{r}
+#Debos instalar lo siguiente
+
+#devtools::install_github("IRkernel/IRkernel")
+```
+
+```{r}
+#IRkernel::options(repr.plot.width = 9.5, repr.plot.height = 6)
+#waffle(expenses/1235, rows=5, size=0.3,
+       #colors=c("#c7d4b6", "#a3aabd", "#a0d0de", "#97b5cf"),
+       #title="Imaginary Household Expenses Each Year",
+       #xlab = "1 square = $934")
+```
+
+## Box Plots
+
+A box plot summarizes the distribution of sorted numerical data.
+
+-   The first quartile is the point 25% of the way through the sorted data.
+
+-   In other words, a quarter of the data points are less than this value.
+
+-   Similarly, 75% of the points are less than the third quartile value.
+
+-   The interquartile range is simply the difference between the first and third quartile
+
+-   The median is effectively the second quartile
+
+-   The lower and upper whiskers indicate values outside the interquartile range
+
+![](boxplot.png)
+
+An example...
+
+![](example.png)
+
+### Paso 0: Example Data Frame
+
+In order to reproduce the results, we are going to fix the seed value for the random number generator. So the data will appear random, but it will be the same very time the code is run.
+
+```{r}
+#making the results reproducible
+set.seed(1234)
+```
+
+1.  Create two sets of data
+
+```{r}
+set_a <- rnorm(200, mean=1, sd=2)
+set_b <- rnorm(200, mean=0, sd=1)
+```
+
+-   Set A is sampled from the normal distribution with mean 1, standard deviation 2
+
+-   Set B has mean 0, standard deviation 1
+
+2.  We will place these sets into a df. Separate them by label
+
+```{r}
+#create the data frame
+df <- data.frame(label = factor(rep(c("A","B"), each=200)), value = c(set_a,set_b))
+```
+
+```{r}
+head(df)
+```
+
+```{r}
+tail(df)
+```
+
+### Paso 0.1: Importing packages
+
+```{r}
+library(ggplot2)
+library(plotly)
+```
+
+### Paso 0.2: geom_boxplot()
+
+```{r}
+ggplot(df, aes(x=label, y=value)) + geom_boxplot()
+
+ggplotly()
+```
+
+**Ahora exploremos con la data de mtcars...**
+
+### Paso 1: Revisamos la base de datos
+
+We are going to work with the first two variables in the top row: `miles per gallon (mpg)` and `number of cylinders (cyl)`
+
+```{r}
+summary(mtcars)
+```
+
+### Paso 2: Creating box plots using qplot()
+
+La variable `cyl` representa más una variable categórica que numérica, con la cual se pueden agrupar el resto de valores.
+
+```{r}
+qplot(factor(cyl), mpg, data = mtcars, geom = "boxplot")
+```
+
+### Paso 3: Creating box plots using ggplot()
+
+```{r}
+cars <- ggplot(mtcars, aes(factor(cyl), mpg))
+cars + geom_boxplot()
+```
